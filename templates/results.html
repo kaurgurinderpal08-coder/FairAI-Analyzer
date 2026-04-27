@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}Analysis Results - FairAI Analyzer{% endblock %}
+
+{% block content %}
+<div class="results-dashboard fade-in" id="report-content">
+    <div class="dashboard-header">
+        <h2><i class="fa-solid fa-chart-line"></i> Bias Analysis Report</h2>
+        <div>
+            <button class="btn btn-outline" onclick="generatePDF()"><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+            <a href="{{ url_for('upload_file') }}" class="btn btn-primary"><i class="fa-solid fa-rotate-left"></i> New Analysis</a>
+        </div>
+    </div>
+
+    <!-- Top Metrics -->
+    <div class="metrics-grid">
+        <!-- Before Fairness Score -->
+        <div class="metric-card glass-card">
+            <h3>Current Fairness Score</h3>
+            <div class="score-display">
+                <div class="score-number {% if results.fairness_score >= 90 %}text-success{% elif results.fairness_score >= 60 %}text-warning{% else %}text-danger{% endif %}">
+                    {{ results.fairness_score }}%
+                </div>
+                <div class="score-status badge {% if results.fairness_score >= 90 %}success{% elif results.fairness_score >= 60 %}warning{% else %}danger{% endif %}">
+                    {{ results.status }}
+                </div>
+            </div>
+            <p class="text-sm mt-2 text-muted">*Score based on Selection Rate ratio</p>
+        </div>
+
+        <!-- Suggestions Box -->
+        <div class="metric-card glass-card suggestions-box">
+            <h3><i class="fa-solid fa-lightbulb text-warning"></i> Smart AI Suggestions</h3>
+            <ul>
+                {% for suggestion in results.suggestions %}
+                    <li>{{ suggestion }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="charts-section mt-4">
+        <h3 class="section-title">Gender Bias Breakdown</h3>
+        <div class="charts-grid">
+            <div class="chart-container glass-card">
+                <h4>Selection Rates by Gender</h4>
+                <canvas id="genderRateChart"></canvas>
+            </div>
+            <div class="chart-container glass-card">
+                <h4>Total vs Selected Applications</h4>
+                <canvas id="genderVolumeChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secondary Bias Section (College vs Location) -->
+    <div class="charts-section mt-4">
+        {% if dataset_type == 'cv' %}
+            <h3 class="section-title">College Tier Impact</h3>
+            <div class="chart-container glass-card full-width">
+                <canvas id="secondaryChart"></canvas>
+            </div>
+        {% elif dataset_type == 'admission' %}
+            <h3 class="section-title">Geographic Location Impact</h3>
+            <div class="chart-container glass-card full-width">
+                <canvas id="secondaryChart"></canvas>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Features: Before vs After -->
+    <div class="charts-section mt-4 improvement-section">
+        <h3 class="section-title gradient-text">Simulation: Before vs After</h3>
+        <p class="text-muted mb-4">Simulated re-balancing of dataset applying fairness constraints.</p>
+        
+        <div class="metrics-grid">
+            <div class="metric-card glass-card before-card border-red">
+                <h4>Before Mitigation</h4>
+                <div class="score-number {% if results.fairness_score >= 90 %}text-success{% elif results.fairness_score >= 60 %}text-warning{% else %}text-danger{% endif %}">
+                    {{ results.fairness_score }}% {{ results.status }}
+                </div>
+                <canvas id="beforeChart" class="mt-2"></canvas>
+            </div>
+            
+            <div class="metric-card glass-card after-card border-green">
+                <h4>After Synthetic Balancing</h4>
+                <div class="score-number {% if results.after_fairness_score >= 90 %}text-success{% elif results.after_fairness_score >= 60 %}text-warning{% else %}text-danger{% endif %}">
+                    {{ results.after_fairness_score }}% {{ results.after_status }}
+                </div>
+                <canvas id="afterChart" class="mt-2"></canvas>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Data passed to JS -->
+<script>
+    const serverData = {{ results | tojson }};
+    const datasetType = "{{ dataset_type }}";
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize Charts when DOM is loaded
+    document.addEventListener('DOMContentLoaded', () => {
+        // Chart Defaults
+        Chart.defaults.color = getComputedStyle(document.body).getPropertyValue('--text-color').trim();
+        Chart.defaults.font.family = 'Inter';
+
+        // Helper func to extract data
+        const genderGroups = serverData.gender.map(d => d.group);
+        const genderRates = serverData.gender.map(d => (d.rate * 100).toFixed(1));
+        const genderTotals = serverData.gender.map(d => d.total);
+        const genderSelected = serverData.gender.map(d => d.selected);
+
+        // 1. Gender Selection Rate Chart
+        new Chart(document.getElementById('genderRateChart'), {
+            type: 'bar',
+            data: {
+                labels: genderGroups,
+                datasets: [{
+                    label: 'Selection Rate (%)',
+                    data: genderRates,
+                    backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444'],
+                    borderRadius: 6
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // 2. Gender Volume Chart
+        new Chart(document.getElementById('genderVolumeChart'), {
+            type: 'bar',
+            data: {
+                labels: genderGroups,
+                datasets: [
+                    {
+                        label: 'Total Applicants',
+                        data: genderTotals,
+                        backgroundColor: 'rgba(99, 102, 241, 0.4)',
+                        borderColor: '#6366f1',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Selected',
+                        data: genderSelected,
+                        backgroundColor: '#6366f1',
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { y: { stacked: false } }
+            }
+        });
+
+        // 3. Secondary Chart (College or Location)
+        const secondaryData = datasetType === 'cv' ? serverData.college : serverData.location;
+        if(secondaryData) {
+            const secGroups = secondaryData.map(d => d.group);
+            const secRates = secondaryData.map(d => (d.rate * 100).toFixed(1));
+            
+            new Chart(document.getElementById('secondaryChart'), {
+                type: 'bar',
+                data: {
+                    labels: secGroups,
+                    datasets: [{
+                        label: 'Selection Rate (%)',
+                        data: secRates,
+                        backgroundColor: '#8b5cf6',
+                        borderRadius: 6
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        // 4. Before vs After Simulation
+        const afterGenderGroups = serverData.after_gender.map(d => d.group);
+        const afterGenderRates = serverData.after_gender.map(d => (d.rate * 100).toFixed(1));
+
+        // Before Chart (Doughnut or Bar)
+        new Chart(document.getElementById('beforeChart'), {
+            type: 'bar',
+            data: {
+                labels: genderGroups,
+                datasets: [{
+                    label: 'Rate Before',
+                    data: genderRates,
+                    backgroundColor: 'rgba(239, 68, 68, 0.8)'
+                }]
+            },
+            options: { 
+                responsive: true, 
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // After Chart
+        new Chart(document.getElementById('afterChart'), {
+            type: 'bar',
+            data: {
+                labels: afterGenderGroups,
+                datasets: [{
+                    label: 'Rate After Simulation',
+                    data: afterGenderRates,
+                    backgroundColor: 'rgba(16, 185, 129, 0.8)'
+                }]
+            },
+            options: { 
+                responsive: true,
+                plugins: { legend: { display: false } }
+            }
+        });
+    });
+
+    // PDF Generation Logic
+    function generatePDF() {
+        const element = document.getElementById('report-content');
+        
+        // temporarily adjust stylings for PDF
+        element.style.background = '#ffffff';
+        element.style.color = '#000000';
+        element.style.padding = '20px';
+        
+        const opt = {
+            margin:       0.5,
+            filename:     'FairAI-Bias-Report.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
+
+        // Needs to switch graphs to light mode text temporarily if in dark mode
+        html2pdf().set(opt).from(element).save().then(() => {
+            // Restore styles
+            element.style.background = '';
+            element.style.color = '';
+            element.style.padding = '';
+        });
+    }
+</script>
+{% endblock %}

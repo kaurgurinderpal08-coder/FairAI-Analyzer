@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Upload - FairAI Analyzer{% endblock %}
+
+{% block content %}
+<div class="upload-container fade-in">
+    <div class="glass-card upload-card">
+        <h2 class="text-center">Upload Dataset for Analysis</h2>
+        <p class="text-center text-muted">Upload a CSV file containing your historical decision data.</p>
+        
+        <form action="{{ url_for('upload_file') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
+            
+            <div class="form-group">
+                <label for="dataset_type">Select Analysis Type:</label>
+                <select name="dataset_type" id="dataset_type" class="custom-select" required>
+                    <option value="cv" {% if preset_type == 'cv' %}selected{% endif %}>CV/Resume Screening</option>
+                    <option value="admission" {% if preset_type == 'admission' %}selected{% endif %}>College Admissions</option>
+                </select>
+            </div>
+            
+            <div class="upload-area" id="drop-zone">
+                <i class="fa-solid fa-cloud-arrow-up upload-icon"></i>
+                <p>Drag & Drop your CSV file here or <span class="text-primary">Browse</span></p>
+                <input type="file" name="file" id="file" accept=".csv" required class="file-input">
+                <p class="file-name" id="file-name-display"></p>
+            </div>
+
+            <div class="requirements-box">
+                <h4>Required CSV Columns:</h4>
+                <ul id="req-cv" class="req-list {% if preset_type == 'admission' %}hidden{% endif %}">
+                    <li><span class="badge">Gender</span></li>
+                    <li><span class="badge">College</span></li>
+                    <li><span class="badge">Selected</span> (1 or 0)</li>
+                </ul>
+                <ul id="req-admission" class="req-list {% if preset_type != 'admission' %}hidden{% endif %}">
+                    <li><span class="badge">Gender</span></li>
+                    <li><span class="badge">Marks</span></li>
+                    <li><span class="badge">Location</span></li>
+                    <li><span class="badge">Selected</span> (1 or 0)</li>
+                </ul>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block" id="analyzeBtn">
+                <i class="fa-solid fa-gear"></i> Run Bias Analysis
+            </button>
+            <div id="loading-spinner" class="spinner hidden">
+                <i class="fa-solid fa-circle-notch fa-spin"></i> Analyzing Dataset...
+            </div>
+        </form>
+
+        <div class="sample-downloads text-center mt-4">
+            <p>Don't have data?</p>
+            <a href="{{ url_for('download_sample', dataset_type='cv') }}" class="btn btn-outline btn-sm">Download Sample CV Data</a>
+            <a href="{{ url_for('download_sample', dataset_type='admission') }}" class="btn btn-outline btn-sm">Download Sample Admission Data</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Handle requirements list visibility
+    const typeSelect = document.getElementById('dataset_type');
+    const reqCv = document.getElementById('req-cv');
+    const reqAdmission = document.getElementById('req-admission');
+
+    typeSelect.addEventListener('change', (e) => {
+        if (e.target.value === 'cv') {
+            reqCv.classList.remove('hidden');
+            reqAdmission.classList.add('hidden');
+        } else {
+            reqCv.classList.add('hidden');
+            reqAdmission.classList.remove('hidden');
+        }
+    });
+
+    // Handle file input display
+    const fileInput = document.getElementById('file');
+    const fileNameDisplay = document.getElementById('file-name-display');
+    
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            fileNameDisplay.textContent = 'Selected: ' + e.target.files[0].name;
+            fileNameDisplay.style.color = 'var(--success-color)';
+        }
+    });
+
+    // Loading state
+    const form = document.getElementById('uploadForm');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const spinner = document.getElementById('loading-spinner');
+
+    form.addEventListener('submit', () => {
+        analyzeBtn.style.display = 'none';
+        spinner.classList.remove('hidden');
+    });
+</script>
+{% endblock %}

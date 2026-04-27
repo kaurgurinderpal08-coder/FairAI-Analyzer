@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Home - FairAI Analyzer{% endblock %}
+
+{% block content %}
+<div class="hero-section fade-in">
+    <div class="hero-text">
+        <h1 class="gradient-text">Uncover Hidden Bias in AI Models</h1>
+        <p class="subtitle">
+            FairAI Analyzer is a robust platform designed to detect biases in datasets used for 
+            <strong>CV Screening</strong> and <strong>College Admissions</strong>. Ensure fairness and equality in automated decisions.
+        </p>
+        <div class="hero-buttons">
+            <a href="{{ url_for('upload_file', type='cv') }}" class="btn btn-primary pulse-hover">
+                <i class="fa-solid fa-file-contract"></i> Analyze CV Bias
+            </a>
+            <a href="{{ url_for('upload_file', type='admission') }}" class="btn btn-secondary pulse-hover">
+                <i class="fa-solid fa-graduation-cap"></i> Analyze Admission Bias
+            </a>
+        </div>
+    </div>
+    
+    <div class="hero-visual glass-card">
+        <div class="metric-preview">
+            <div class="preview-header">Live Fairness Score</div>
+            <div class="score-circle animate-spin-slow">
+                <span class="score-value">84%</span>
+            </div>
+            <div class="badge warning">Moderate Bias Detected</div>
+        </div>
+    </div>
+</div>
+
+<div class="features-section">
+    <h2 class="section-title">Why FairAI?</h2>
+    <div class="features-grid">
+        <div class="feature-card glass-card slide-up" style="animation-delay: 0.1s;">
+            <i class="fa-solid fa-magnifying-glass-chart feature-icon"></i>
+            <h3>Bias Detection Engine</h3>
+            <p>Automatically flags disparities in selection rates based on gender, location, or educational background.</p>
+        </div>
+        <div class="feature-card glass-card slide-up" style="animation-delay: 0.2s;">
+            <i class="fa-solid fa-chart-pie feature-icon"></i>
+            <h3>Visual Insights</h3>
+            <p>Interactive Chart.js visualizations that make demographic discrepancies easy to understand at a glance.</p>
+        </div>
+        <div class="feature-card glass-card slide-up" style="animation-delay: 0.3s;">
+            <i class="fa-solid fa-wand-magic-sparkles feature-icon"></i>
+            <h3>Smart Suggestions</h3>
+            <p>Actionable recommendations to balance datasets and mitigate model bias before deployment.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
